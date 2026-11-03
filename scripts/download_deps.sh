@@ -67,8 +67,9 @@ ELFLDR_URL=$(resolve_dep_release_url "third_party/ps5-elfldr" "itsPLK/ps5-elfldr
 echo "Resolving release URL for pinned ps5-kexp..."
 KEXP_URL=$(resolve_dep_release_url "third_party/ps5-kexp" "itsPLK/ps5-kexp" '\.bin')
 
-echo "Resolving release URL for pinned ps5-unified-autoloader..."
-AUTOLOADER_URL=$(resolve_dep_release_url "third_party/ps5-unified-autoloader" "itsPLK/ps5-unified-autoloader" '\.elf')
+# Fork: third_party/ps5-unified-autoloader is bsk193/ps5-unified-autoloader-x.
+echo "Resolving release URL for pinned ps5-unified-autoloader-x..."
+AUTOLOADER_URL=$(resolve_dep_release_url "third_party/ps5-unified-autoloader" "bsk193/ps5-unified-autoloader-x" '\.elf')
 
 ELFLDR_VER=$(echo "$ELFLDR_URL" | grep -oE 'download/[^/]+' | cut -d'/' -f2)
 KEXP_VER=$(echo "$KEXP_URL" | grep -oE 'download/[^/]+' | cut -d'/' -f2)

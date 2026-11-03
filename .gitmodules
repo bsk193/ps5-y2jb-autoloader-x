@@ -9,4 +9,5 @@
 	url = https://github.com/itsPLK/y2jb-updater.git
 [submodule "third_party/ps5-unified-autoloader"]
 	path = third_party/ps5-unified-autoloader
-	url = https://github.com/itsPLK/ps5-unified-autoloader.git
+	# Fork: bsk193/ps5-unified-autoloader-x launches Payload Manager X instead of pldmgr.
+	url = https://github.com/bsk193/ps5-unified-autoloader-x.git

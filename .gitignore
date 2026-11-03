@@ -1,5 +1,6 @@
 .DS_Store
 y2jb_update.zip
+y2jb_x_update.zip
 src/elfldr-ps5-*.elf
 src/kexp-*.bin
 src/ps5-unified-autoloader.elf

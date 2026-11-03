@@ -573,17 +573,23 @@ async function start_update() {
       }
   }
 
+  // Fork (Y2JB Autoloader X): look only for our own update file name. Upstream's
+  // updater looks for y2jb_update.zip, verifies only file sizes and never deletes
+  // the zip, so a shared name would let either loader install the other's build
+  // on every launch. Distinct names let both run side by side on two YouTube apps.
+  const UPDATE_ZIP_NAME = "y2jb_x_update.zip";
+
   function get_potential_update_paths() {
     const paths = [];
     for (let i = 0; i <= 7; i++) {
       const usbBase = `/mnt/usb${i}`;
       if (file_exists(usbBase)) {
-        paths.push(`${usbBase}/y2jb_update.zip`);
-        paths.push(`${usbBase}/ps5_autoloader/y2jb_update.zip`);
+        paths.push(`${usbBase}/${UPDATE_ZIP_NAME}`);
+        paths.push(`${usbBase}/ps5_autoloader/${UPDATE_ZIP_NAME}`);
       }
     }
-    paths.push('/data/y2jb_update.zip');
-    paths.push('/data/ps5_autoloader/y2jb_update.zip');
+    paths.push(`/data/${UPDATE_ZIP_NAME}`);
+    paths.push(`/data/ps5_autoloader/${UPDATE_ZIP_NAME}`);
     return paths;
   }
 

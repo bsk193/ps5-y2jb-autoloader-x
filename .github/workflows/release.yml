@@ -1,0 +1,148 @@
+name: Release
+
+# Releases are cut from tags (tools/release.ps1 creates and pushes them):
+#   git tag x-v1.1.0         && git push fork x-v1.1.0         -> release (marked Latest)
+#   git tag x-v1.1.1-beta.1  && git push fork x-v1.1.1-beta.1  -> pre-release (alpha/beta/rc)
+# Or: Actions -> Release -> Run workflow (on main), enter the version; the tag
+# is created on main's latest commit.
+# Releases are refused unless the commit is part of main.
+# The version is our own semver; the notes say which upstream Y2JB Autoloader
+# release it is based on (VERSION in the Makefile at that commit).
+#
+# Reminder: the bundled ps5-unified-autoloader.elf is the bsk193/ps5-unified-autoloader-x
+# release matching the pinned third_party/ps5-unified-autoloader commit, so cut that
+# release first (see FORK.md, "Release procedure").
+on:
+  push:
+    tags: ['x-v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, e.g. 1.1.0 or 1.1.1-beta.1 (creates tag x-v<version>)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+      upstream: ${{ steps.v.outputs.upstream }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: v
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          # Releases only from main: the tagged commit must be part of main.
+          git fetch -q origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Commit $GITHUB_SHA is not on main. Merge to main first, then tag a commit on main."
+            exit 1
+          fi
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            TAG="$GITHUB_REF_NAME"
+          else
+            TAG="x-v${INPUT_VERSION#v}"
+            if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+              echo "::error::Tag $TAG already exists"; exit 1
+            fi
+          fi
+          if ! OUT=$(bash tools/fork_version.sh parse "$TAG"); then
+            echo "::error::Invalid release tag '$TAG'. Use x-v1.2.3 (release) or x-v1.2.3-beta.1 (pre-release: alpha/beta/rc)"
+            exit 1
+          fi
+          VER="${OUT% *}"
+          KIND="${OUT#* }"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error::Release $TAG already exists"; exit 1
+          fi
+          UP=$(bash tools/fork_version.sh upstream)
+          echo "Releasing Y2JB Autoloader X $VER ($KIND), based on Y2JB Autoloader $UP"
+          {
+            echo "version=$VER"
+            echo "tag=$TAG"
+            echo "prerelease=$([ "$KIND" = prerelease ] && echo true || echo false)"
+            echo "upstream=$UP"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [version, build]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact }}
+          path: dist
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VER: ${{ needs.version.outputs.version }}
+          TAG: ${{ needs.version.outputs.tag }}
+          UP: ${{ needs.version.outputs.upstream }}
+          PRERELEASE: ${{ needs.version.outputs.prerelease }}
+          REPO: ${{ github.repository }}
+          ELFLDR_VER: ${{ needs.build.outputs.elfldr_ver }}
+          KEXP_VER: ${{ needs.build.outputs.kexp_ver }}
+          AUTOLOADER_VER: ${{ needs.build.outputs.autoloader_ver }}
+        run: |
+          set -euo pipefail
+          ls -l dist
+          for f in y2jb_x_update.zip download0.dat; do
+            [ -f "dist/$f" ] || { echo "::error::missing artifact $f"; exit 1; }
+          done
+
+          # Previous release tag for the compare link (pre-releases sort before their release).
+          PREV=$(git -c versionsort.suffix=- tag -l 'x-v*' --sort=-v:refname | grep -vx "$TAG" | head -1 || true)
+          {
+            echo "**Y2JB Autoloader X $VER**, based on [Y2JB Autoloader v$UP](https://github.com/itsPLK/ps5-y2jb-autoloader/releases) by PLK."
+            echo "Loads [Payload Manager X](https://github.com/bsk193/ps5-payload-manager-x) (port 8084) instead of the official Payload Manager."
+            echo
+            if [ "$PRERELEASE" = "true" ]; then
+              echo "> [!WARNING]"
+              echo "> Pre-release for testing. The latest stable release is unchanged."
+              echo
+            fi
+            echo "| File | Use |"
+            echo "|---|---|"
+            echo "| \`download0.dat\` | First install: FTP to \`/user/download/PPSA0165*/\` (use a different YouTube region than upstream's Y2JB to keep both) |"
+            echo "| \`y2jb_x_update.zip\` | Update: put on the root of a USB drive (or \`/data/\`) and start the app. Upstream's \`y2jb_update.zip\` is ignored, so both can sit on the same drive |"
+            echo
+            if [ -n "$PREV" ]; then
+              echo "Changes: https://github.com/${REPO}/compare/$PREV...$TAG"
+              echo
+            fi
+            echo "<details><summary>Bundled binaries</summary>"
+            echo
+            echo "- [itsPLK/ps5-elfldr](https://github.com/itsPLK/ps5-elfldr): [${ELFLDR_VER}](https://github.com/itsPLK/ps5-elfldr/releases/tag/${ELFLDR_VER})"
+            echo "- [itsPLK/ps5-kexp](https://github.com/itsPLK/ps5-kexp): [${KEXP_VER}](https://github.com/itsPLK/ps5-kexp/releases/tag/${KEXP_VER})"
+            echo "- [bsk193/ps5-unified-autoloader-x](https://github.com/bsk193/ps5-unified-autoloader-x): [${AUTOLOADER_VER}](https://github.com/bsk193/ps5-unified-autoloader-x/releases/tag/${AUTOLOADER_VER})"
+            echo
+            echo "</details>"
+          } > notes.md
+          if [ "$PRERELEASE" = "true" ]; then
+            FLAGS="--prerelease --latest=false"
+          else
+            FLAGS="--latest"
+          fi
+          gh release create "$TAG" dist/y2jb_x_update.zip dist/download0.dat \
+            --target "$GITHUB_SHA" \
+            --title "Y2JB Autoloader X $VER" \
+            --notes-file notes.md \
+            $FLAGS

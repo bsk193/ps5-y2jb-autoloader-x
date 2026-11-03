@@ -10,6 +10,15 @@ else
 RELEASE_VERSION := v$(VERSION)-$(BUILD_TYPE)-$(if $(GIT_DIRTY),$(shell date +"%Y%m%d%H%M%S"),$(GIT_HASH))
 endif
 
+# Fork (Y2JB Autoloader X): our own semver from y2x-v* tags (tools/fork_version.sh).
+# VERSION above stays upstream's and is only shown as "based on vX". CI passes
+# X_VERSION explicitly; local builds use `git describe` (0.0.0-dev without tags).
+UPSTREAM_VERSION := $(VERSION)
+ifeq ($(strip $(X_VERSION)),)
+X_VERSION := $(shell bash tools/fork_version.sh dev 2>/dev/null)
+endif
+RELEASE_VERSION := v$(X_VERSION)
+
 SRC_FILES := $(shell find src -type f)
 ELFLDR_FILE := $(shell basename $(shell ls src/elfldr-ps5-*.elf 2>/dev/null | head -n 1) 2>/dev/null)
 KEXP_FILE := $(shell basename $(shell ls src/kexp-*.bin 2>/dev/null | head -n 1) 2>/dev/null)
@@ -20,6 +29,7 @@ y2jb_update.zip: $(SRC_FILES)
 	rm -rf build_dir
 	cp -r src build_dir
 	sed -i.bak "s/@@VERSION@@/$(RELEASE_VERSION)/g" build_dir/main.js && rm build_dir/main.js.bak
+	sed -i.bak "s/@@UPSTREAM_VERSION@@/v$(UPSTREAM_VERSION)/g" build_dir/main.js && rm build_dir/main.js.bak
 	sed -i.bak "s/@@ELFLDR_FILE@@/$(ELFLDR_FILE)/g" build_dir/aioshellcode.js && rm build_dir/aioshellcode.js.bak
 	sed -i.bak "s/@@KEXP_FILE@@/$(KEXP_FILE)/g" build_dir/aioshellcode.js && rm build_dir/aioshellcode.js.bak
 	sed -i.bak "s/@@ELFLDR_FILE@@/$(ELFLDR_FILE)/g" build_dir/relapse.js && rm build_dir/relapse.js.bak

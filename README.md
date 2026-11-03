@@ -1,10 +1,23 @@
 <p align="center">
  <img src="./src/icon0.png" width="128" />
 </p>
-<h1 align="center">PS5 Y2JB Autoloader</h1>
+<h1 align="center">PS5 Y2JB Autoloader X</h1>
 <h3 align="center">Fork of <a href="https://github.com/Gezine/Y2JB">Y2JB</a></h3>
 &nbsp;
 <p align="center">Automatically loads the kernel exploit and your elf payloads.<br>Supports PS5 firmwares 4.03-13.60</p>
+
+> [!IMPORTANT]
+> **This is a fork of [itsPLK/ps5-y2jb-autoloader](https://github.com/itsPLK/ps5-y2jb-autoloader).**
+> It loads **[Payload Manager X](https://github.com/bsk193/ps5-payload-manager-x)** (port **8084**) instead of
+> the official [Payload Manager](https://github.com/itsPLK/ps5-payload-manager), and starts it **every launch**
+> (via [ps5-unified-autoloader-x](https://github.com/bsk193/ps5-unified-autoloader-x)); `autoload.txt`
+> payloads run first. The exploit chains are unchanged upstream behaviour.
+>
+> **Runs next to upstream's Y2JB:** put this `download0.dat` in a different YouTube region's app
+> (`PPSA01650` / `PPSA01651` / `PPSA01652`) than upstream's. Updates use **`y2jb_x_update.zip`**
+> (upstream's `y2jb_update.zip` is ignored, and upstream ignores ours), so both zips can share a USB drive.
+> Downloads are on this fork's [Releases](https://github.com/bsk193/ps5-y2jb-autoloader-x/releases).
+> See [FORK.md](FORK.md).
 
 <p align="center">
     <b>Other Autoloaders:</b><br>

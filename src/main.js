@@ -6,6 +6,8 @@
 */
 
 const autoloader_version = "@@VERSION@@";
+// Fork: upstream Y2JB Autoloader version this build is based on.
+const upstream_version = "@@UPSTREAM_VERSION@@";
 
 
 
@@ -148,7 +150,7 @@ function trigger() {
         autoloader_ui.style.fontSize = "8px";
 
         const title = document.createElement("div");
-        title.textContent = "Y2JB Autoloader";
+        title.textContent = "Jailbreak";
         title.style.fontFamily = "monospace";
         title.style.textAlign = "center";
         title.style.fontWeight = "bold";
@@ -272,7 +274,8 @@ function trigger() {
     try {
         if (typeof window.autoloader_ui === 'function') {
             window.autoloader_ui();
-            window.uiLog("Y2JB Autoloader " + autoloader_version + " by PLK", "success");
+            window.uiLog("Y2JB Autoloader X " + autoloader_version + ", based on Y2JB Autoloader " +
+                upstream_version + " by PLK", "success");
             window.updateProgress(0, "Running userland exploit...");
 
         }
