@@ -71,8 +71,9 @@ only from commits on `main`. Dev builds use `git describe` (`0.0.0-dev` with no 
 
 ## Release procedure
 
-Bottom-up: **payload-manager-x → unified-autoloader-x → this repo**. `download_deps.sh` finds the
-unified-autoloader-x release whose tag contains the pinned submodule commit, so:
+Bottom-up: **payload-manager-x → unified-autoloader-x → this repo**. `download_deps.sh` downloads
+the unified-autoloader-x release whose tag (`x-v*`) is on the pinned submodule commit, so pin it
+to a released tag:
 
 ```bash
 git -C third_party/ps5-unified-autoloader fetch --tags origin

@@ -53,6 +53,17 @@ resolve_dep_release_url() {
         fi
     fi
 
+    # Fork: x-v* tags (ps5-unified-autoloader-x) carry no commit hash in their name, so
+    # also ask GitHub which tag points at the pinned commit.
+    if [ -z "$url" ] && [ -n "$pinned_hash" ]; then
+        local api_tag
+        api_tag=$("${CURL_CMD[@]}" "https://api.github.com/repos/$repo/tags?per_page=100" 2>/dev/null \
+            | python3 -c 'import json,sys; h=sys.argv[1]; t=[x["name"] for x in json.load(sys.stdin) if x["commit"]["sha"].startswith(h)]; print(sorted(t)[-1] if t else "")' "$pinned_hash" 2>/dev/null || true)
+        if [ -n "$api_tag" ]; then
+            url=$("${CURL_CMD[@]}" "https://api.github.com/repos/$repo/releases/tags/$api_tag" | grep -o "https://github.com/$repo/releases/download/[^\"]*$ext_regex" | head -n 1 || true)
+        fi
+    fi
+
     if [ -z "$url" ]; then
         echo "Error: Could not retrieve release URL for $repo matching pinned submodule ($tag / $pinned_hash)." >&2
         exit 1
