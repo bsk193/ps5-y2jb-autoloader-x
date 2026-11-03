@@ -27,7 +27,7 @@ Manager). No exploit logic is changed.
 | `scripts/download_deps.sh` | Release repo → `bsk193/ps5-unified-autoloader-x` |
 | `src/update.js` | Update file is `y2jb_x_update.zip` (`UPDATE_ZIP_NAME`), so it coexists with upstream |
 | `src/main.js` | Title "Jailbreak"; log "Y2JB Autoloader X vN, based on Y2JB Autoloader vX by PLK" |
-| `src/icon0.png`, `assets/icon.svg` | Broken-chain icon with a play badge (the updater writes it to the YouTube tile) |
+| `src/icon0.png` | Jailbreak icon: broken chain + play badge, 512x512 (the updater writes it to the YouTube tile) |
 | `Makefile` | Fork version hook (`X_VERSION`); `VERSION` stays upstream's |
 | `tools/fork_version.sh`, `tools/release.ps1` | Fork versioning (see below) |
 | `.github/workflows/` | `build.yml` (every push/PR) and tag-driven `release.yml` replace `dev.yml`/`stable.yml` |
