@@ -123,6 +123,20 @@ function trigger() {
         }
     };
 
+    // Fork: Jailbreak shared UI. Same layout and values as the WebKit loader
+    // (frontend/autoloader/theme-x.css in ps5-webkit-autoloader-x): icon, wordmark,
+    // variant line, log panel, status line over a thin progress track, footer.
+    // Drawn at 1920x1080 and scaled to the screen, like upstream's UI.
+    const X = {
+        bg: "#0a0e1c", surface: "#11172b", track: "#1c2440", outline: "#232c4a",
+        text: "#e6ebf5", muted: "#8a95b4", faint: "#5d6889",
+        primary: "#4da3ff", primarySoft: "#8fc2ff",
+        ok: "#4ccf8f", warn: "#f2c14e", err: "#ef6b73",
+        sans: "-apple-system, 'Helvetica Neue', Helvetica, Arial, sans-serif",
+        mono: "'SFMono-Regular', Menlo, Monaco, 'Cascadia Mono', monospace"
+    };
+    window.autoloader_ui_colors = X;
+
     window.autoloader_ui = function() {
         if (document.getElementById("autoloader_ui")) {
             const existing_ui = document.getElementById("autoloader_ui");
@@ -133,128 +147,90 @@ function trigger() {
         const baseHeight = 1080;
         const scale = window.innerWidth / baseWidth;
 
-        const autoloader_ui = document.createElement("div");
-        autoloader_ui.id = "autoloader_ui";
-        autoloader_ui.style.position = "fixed";
-        autoloader_ui.style.top = "0px";
-        autoloader_ui.style.left = "0px";
-        autoloader_ui.style.width = baseWidth + "px";
-        autoloader_ui.style.height = baseHeight + "px";
-        autoloader_ui.style.transform = "scale(" + scale + ")";
-        autoloader_ui.style.transformOrigin = "top left";
-        autoloader_ui.style.zIndex = "9999";
-        // Fork: Jailbreak theme (deep navy, chrome, electric-blue glow), matching the icon.
-        autoloader_ui.style.backgroundColor = "#01041c";
-        autoloader_ui.style.backgroundImage = "radial-gradient(circle at 50% 30%, #0b1d6b 0%, #030a3d 45%, #01041c 100%)";
-        autoloader_ui.style.border = "none";
-        autoloader_ui.style.padding = "5px";
-        autoloader_ui.style.fontFamily = "Arial, sans-serif";
-        autoloader_ui.style.fontSize = "8px";
+        function el(tag, styles, text) {
+            const node = document.createElement(tag);
+            for (const k in styles) node.style[k] = styles[k];
+            if (text) node.textContent = text;
+            return node;
+        }
 
-        // Fork: icon0.png sits next to splash.html (the updater copies it to the tile too).
-        const logo = document.createElement("img");
-        logo.src = "icon0.png";
-        logo.style.display = "block";
-        logo.style.width = "120px";
-        logo.style.height = "120px";
-        logo.style.margin = "40px auto 0 auto";
-        logo.style.borderRadius = "26px";
-        logo.style.boxShadow = "0 0 0 2px rgba(90, 170, 255, 0.35), 0 0 40px rgba(42, 168, 255, 0.45)";
+        const autoloader_ui = el("div", {
+            position: "fixed", top: "0px", left: "0px",
+            width: baseWidth + "px", height: baseHeight + "px",
+            transform: "scale(" + scale + ")", transformOrigin: "top left",
+            zIndex: "9999", backgroundColor: X.bg, color: X.text,
+            fontFamily: X.sans, boxSizing: "border-box", paddingTop: "56px"
+        });
+        autoloader_ui.id = "autoloader_ui";
+
+        // Plain Jailbreak icon (jb.png sits next to splash.html); hidden if it can't load.
+        const logo = el("img", {
+            display: "block", width: "96px", height: "96px",
+            margin: "0 auto 18px auto", borderRadius: "10px"
+        });
+        logo.src = "jb.png";
         logo.onerror = function() { if (logo.parentNode) logo.parentNode.removeChild(logo); };
         autoloader_ui.appendChild(logo);
 
-        const title = document.createElement("div");
-        title.textContent = "JAILBREAK";
-        title.style.fontFamily = "Arial, sans-serif";
-        title.style.textAlign = "center";
-        title.style.fontWeight = "800";
-        title.style.letterSpacing = "0.32em";
-        title.style.paddingLeft = "0.32em";
-        title.style.color = "#e9eef7";
-        title.style.backgroundImage = "linear-gradient(90deg, #ffffff 0%, #c9d3e3 45%, #7f8ca3 55%, #f2f5fa 100%)";
-        title.style.webkitBackgroundClip = "text";
-        title.style.webkitTextFillColor = "transparent";
-        title.style.textShadow = "0 0 28px rgba(42, 168, 255, 0.35)";
-        title.style.fontSize = "60px";
-        title.style.marginTop = "18px";
-        autoloader_ui.appendChild(title);
+        autoloader_ui.appendChild(el("div", {
+            textAlign: "center", fontSize: "44px", fontWeight: "600",
+            letterSpacing: "0.24em", paddingLeft: "0.24em", lineHeight: "1.1", color: X.text
+        }, "JAILBREAK"));
+        autoloader_ui.appendChild(el("div", {
+            textAlign: "center", marginTop: "8px", fontSize: "18px", fontWeight: "500",
+            letterSpacing: "0.12em", textTransform: "uppercase", color: X.primarySoft
+        }, "Y2JB · Payload Manager X"));
 
-        const subtitle = document.createElement("div");
-        subtitle.textContent = "Y2JB \u00b7 Payload Manager X";
-        subtitle.style.fontFamily = "Arial, sans-serif";
-        subtitle.style.textAlign = "center";
-        subtitle.style.fontWeight = "600";
-        subtitle.style.letterSpacing = "0.18em";
-        subtitle.style.textTransform = "uppercase";
-        subtitle.style.color = "#5ad8ff";
-        subtitle.style.fontSize = "24px";
-        subtitle.style.marginTop = "4px";
-        autoloader_ui.appendChild(subtitle);
-
-        const logWrapper = document.createElement("div");
-        logWrapper.style.width = "62%";
-        logWrapper.style.height = "50%";        
-        logWrapper.style.position = "relative";
-        logWrapper.style.margin = "20px auto 0 auto";
-        logWrapper.style.padding = "0px";
-        logWrapper.style.color = "#9fb1d6";
-        logWrapper.style.backgroundColor = "rgba(2, 8, 40, 0.88)";
-        logWrapper.style.fontFamily = "monospace";
-        logWrapper.style.fontSize = "28px";
-        logWrapper.style.overflow = "hidden";
-        logWrapper.style.border = "2px solid rgba(90, 170, 255, 0.35)";
-        logWrapper.style.borderRadius = "16px";
-        logWrapper.style.boxShadow = "inset 0 0 32px rgba(42, 168, 255, 0.18)";
-        logWrapper.style.overflowY = "scroll";
+        const logWrapper = el("div", {
+            width: "1200px", height: "520px", position: "relative", boxSizing: "border-box",
+            margin: "28px auto 0 auto", padding: "0px",
+            backgroundColor: X.surface, border: "1px solid " + X.outline, borderRadius: "6px",
+            color: X.muted, fontFamily: X.mono, fontSize: "22px", lineHeight: "1.5",
+            overflow: "hidden", overflowY: "scroll"
+        });
         logWrapper.id = "logWrapper";
         autoloader_ui.appendChild(logWrapper);
 
-        const logContainer = document.createElement("div");
+        const logContainer = el("div", { position: "absolute", bottom: "0", padding: "20px 24px" });
         logContainer.id = "logContainer";
-        logContainer.style.position = "absolute";
-        logContainer.style.bottom = "0";
-        logContainer.style.padding = "10px";
         logWrapper.appendChild(logContainer);
 
-        const progressBarContainer = document.createElement("div");
-        progressBarContainer.style.width = "60%";
-        progressBarContainer.style.height = "90px";
-        progressBarContainer.style.backgroundColor = "rgba(2, 8, 40, 0.9)";
-        progressBarContainer.style.border = "2px solid rgba(90, 170, 255, 0.4)";
-        progressBarContainer.style.borderRadius = "50px";
-        progressBarContainer.style.boxShadow = "0 0 24px rgba(42, 168, 255, 0.25)";
-        progressBarContainer.style.margin = "0 auto";
-        progressBarContainer.style.overflow = "hidden";
-        progressBarContainer.style.position = "relative";
-        progressBarContainer.style.marginTop = "30px";
+        // Status line above a thin track.
+        const progressBarContainer = el("div", {
+            width: "1200px", height: "46px", position: "relative", margin: "28px auto 0 auto"
+        });
         autoloader_ui.appendChild(progressBarContainer);
 
-        const progressLabel = document.createElement("div");
+        const progressLabel = el("div", {
+            position: "absolute", top: "0", left: "0", right: "0", height: "32px",
+            fontSize: "20px", fontWeight: "500", color: X.text,
+            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"
+        }, "Loading...");
         progressLabel.id = "progressLabel";
-        progressLabel.textContent = "Loading...";
-        progressLabel.style.position = "absolute";
-        progressLabel.style.top = "50%";
-        progressLabel.style.left = "50%";
-        progressLabel.style.transform = "translate(-50%, -50%)";
-        progressLabel.style.color = "#fff";
-        progressLabel.style.letterSpacing = "0.04em";
-        progressLabel.style.textShadow = "0 1px 3px rgba(1, 4, 28, 0.9)";
-        progressLabel.style.fontSize = "42px";
-        progressLabel.style.fontWeight = "bold";
-        progressLabel.style.zIndex = "1";
         progressBarContainer.appendChild(progressLabel);
 
-        const progressBar = document.createElement("div");
+        const track = el("div", {
+            position: "absolute", left: "0", right: "0", bottom: "0", height: "6px",
+            borderRadius: "4px", backgroundColor: X.track, overflow: "hidden"
+        });
+        progressBarContainer.appendChild(track);
+
+        const progressBar = el("div", {
+            width: "100%", height: "100%", backgroundColor: X.primary,
+            transformOrigin: "left", transform: "scaleX(0)", transition: "transform 0.5s ease-in-out"
+        });
         progressBar.id = "progressBar";
-        progressBar.style.width = "100%";
-        progressBar.style.height = "100%";
-        progressBar.style.backgroundColor = "#2aa8ff";
-        progressBar.style.backgroundImage = "linear-gradient(90deg, #1a5cff 0%, #2aa8ff 55%, #5ad8ff 100%)";
-        progressBar.style.boxShadow = "0 0 18px rgba(90, 216, 255, 0.75)";
-        progressBar.style.transformOrigin = "left";
-        progressBar.style.transform = "scaleX(0)";
-        progressBar.style.transition = "transform 0.5s ease-in-out";
-        progressBarContainer.appendChild(progressBar);
+        track.appendChild(progressBar);
+
+        // Footer: version and source, like the WebKit pages.
+        const footer = el("div", {
+            position: "absolute", left: "0", right: "0", bottom: "28px", textAlign: "center",
+            fontSize: "14px", lineHeight: "1.6", color: X.faint
+        });
+        footer.appendChild(el("div", {}, "Y2JB Autoloader X " + autoloader_version +
+            ", based on Y2JB Autoloader " + upstream_version + " by PLK"));
+        footer.appendChild(el("div", {}, "Free and open source: github.com/bsk193/ps5-y2jb-autoloader-x"));
+        autoloader_ui.appendChild(footer);
 
         document.body.appendChild(autoloader_ui);
     };
@@ -278,14 +254,15 @@ function trigger() {
         const logContainer = document.getElementById("logContainer");
         if (logContainer) {
             const logEntry = document.createElement("div");
+            const X = window.autoloader_ui_colors;
             if (type === "error") {
-                logEntry.style.color = "#ff5c7a";
+                logEntry.style.color = X.err;
             } else if (type === "success") {
-                logEntry.style.color = "#55f0b5";
+                logEntry.style.color = X.ok;
             } else if (type === "warning") {
-                logEntry.style.color = "#ffd166";
+                logEntry.style.color = X.warn;
             } else {
-                logEntry.style.color = "#9fb1d6";
+                logEntry.style.color = X.muted;
             }
             logEntry.textContent = message;
             logContainer.appendChild(logEntry);
