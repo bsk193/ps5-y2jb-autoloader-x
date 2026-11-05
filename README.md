@@ -81,6 +81,11 @@ Install YouTube (`PPSA01650` / `PPSA01651` / `PPSA01652`):
 
 Then FTP `download0.dat` from Releases to `/user/download/PPSA0165*/`.
 
+> **No FTP? Use the updater (Y2JB Autoloader X):** send `y2jb-x-updater_v<ver>_ps5.elf` from Releases
+> to the PS5 (with Payload Manager X or any ELF loader). It opens the browser, lists each YouTube region
+> and what it has now (Y2JB Autoloader X version, upstream Y2JB, nothing), and installs the latest
+> `download0.dat` into the one you pick. The same ELF updates an existing install to a newer `download0.dat`.
+
 ### Non-Jailbroken PS5
 You might find a system backup with pre-configured Autoloader (I don't distribute such backups).
 

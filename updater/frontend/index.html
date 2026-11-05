@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Y2JB X Updater</title>
+<style>
+  :root {
+    --bg: #0a0e1c; --surface: #11172b; --track: #1c2440; --outline: #232c4a;
+    --text: #e6ebf5; --muted: #8a95b4; --faint: #5d6889;
+    --primary: #4da3ff; --primary-soft: #8fc2ff;
+    --ok: #4ccf8f; --warn: #f2c14e; --err: #ef6b73;
+    --radius: 6px;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  body { min-height: 100vh; padding: 48px 16px 96px; }
+  main { max-width: 1200px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 40px; }
+  .logo { width: 96px; height: 96px; border-radius: 10px; display: block; margin: 0 auto 20px; }
+  h1 { font-size: 44px; font-weight: 600; letter-spacing: 0.24em; margin: 0 0 8px; padding-left: 0.24em; }
+  .sub { font-size: 18px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
+  .latest { margin-top: 18px; font-size: 18px; color: var(--muted); }
+  .latest b { color: var(--text); font-weight: 600; }
+
+  .regions { display: grid; gap: 12px; }
+  .region { display: flex; align-items: center; gap: 24px; padding: 22px 26px;
+    background: var(--surface); border: 1px solid var(--outline); border-radius: var(--radius); }
+  .region .id { min-width: 190px; }
+  .region .tid { font-family: var(--mono); font-size: 22px; }
+  .region .name { font-size: 15px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.1em; }
+  .region .state { flex: 1; font-size: 19px; color: var(--muted); }
+  .state .x { color: var(--ok); }
+  .state .up { color: var(--warn); }
+  .state .none { color: var(--faint); }
+  .region.off { opacity: 0.55; }
+
+  button { font: inherit; font-size: 19px; font-weight: 600; color: var(--bg); background: var(--primary);
+    border: 0; border-radius: var(--radius); padding: 14px 26px; min-width: 200px; cursor: pointer; }
+  button:hover, button:focus { background: var(--primary-soft); outline: 3px solid var(--primary-soft); outline-offset: 2px; }
+  button.secondary { background: var(--track); color: var(--text); }
+  button.secondary:hover, button.secondary:focus { background: var(--outline); }
+  button:disabled { background: var(--track); color: var(--faint); cursor: default; outline: none; }
+
+  .job { margin-top: 28px; padding: 24px 26px; background: var(--surface);
+    border: 1px solid var(--outline); border-radius: var(--radius); display: none; }
+  .job.show { display: block; }
+  .job .label { font-size: 20px; height: 32px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .job .label.err { color: var(--err); }
+  .job .label.ok { color: var(--ok); }
+  .track { height: 6px; background: var(--track); border-radius: 4px; overflow: hidden; }
+  .bar { height: 100%; width: 0; background: var(--primary); transition: width 0.3s; }
+  .job .bytes { margin-top: 10px; font-size: 16px; color: var(--muted); font-family: var(--mono); }
+  .job .msg { margin-top: 12px; font-size: 18px; color: var(--text); }
+
+  .actions { margin-top: 28px; display: flex; gap: 12px; justify-content: center; }
+
+  details { margin-top: 28px; }
+  summary { font-size: 16px; color: var(--muted); cursor: pointer; }
+  .log { margin-top: 10px; background: var(--surface); border: 1px solid var(--outline); border-radius: var(--radius);
+    padding: 16px 20px; font-family: var(--mono); font-size: 16px; line-height: 1.5; color: var(--muted);
+    max-height: 280px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+
+  footer { position: fixed; left: 0; right: 0; bottom: 28px; text-align: center; font-size: 14px; color: var(--faint); }
+
+  @media (max-width: 720px) {
+    h1 { font-size: 32px; }
+    .region { flex-wrap: wrap; gap: 12px; }
+    .region .state { flex-basis: 100%; }
+    button { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img class="logo" src="/jb.png" alt="Jailbreak" onerror="this.style.display='none'">
+    <h1>JAILBREAK</h1>
+    <div class="sub">Y2JB Updater &middot; Payload Manager X</div>
+    <div class="latest" id="latest">Checking the latest release&hellip;</div>
+  </header>
+
+  <div class="regions" id="regions"></div>
+
+  <div class="job" id="job">
+    <div class="label" id="jobLabel"></div>
+    <div class="track"><div class="bar" id="bar"></div></div>
+    <div class="bytes" id="bytes"></div>
+  </div>
+
+  <div class="actions">
+    <button class="secondary" id="rescan">Check again</button>
+    <button class="secondary" id="close">Close updater</button>
+  </div>
+
+  <details>
+    <summary>Log</summary>
+    <div class="log" id="log"></div>
+  </details>
+</main>
+<footer id="footer">Y2JB Autoloader X Updater</footer>
+
+<script>
+(function () {
+  var REGION_NAMES = { US: "United States", EU: "Europe", JP: "Japan" };
+  var state = null, closed = false, focusedTid = null;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function mb(n) { return (n / 1048576).toFixed(1) + " MB"; }
+
+  function post(path, done) {
+    var x = new XMLHttpRequest();
+    x.open("POST", path, true);
+    x.setRequestHeader("X-Y2JB-Updater", "1");
+    x.onload = function () { done && done(x.status, x.responseText); };
+    x.onerror = function () { done && done(0, "updater not reachable"); };
+    x.send();
+  }
+
+  function busy() { return state && /^(release|download|verify|install)$/.test(state.job.state); }
+
+  function describe(r) {
+    if (!r.scanned) return '<span class="none">Checking&hellip;</span>';
+    if (!r.app && !r.image) return '<span class="none">YouTube not installed</span>';
+    if (r.kind === "x") return '<span class="x">Y2JB Autoloader X ' + esc(r.version || "") + "</span>";
+    if (r.kind === "upstream") return '<span class="up">Upstream Y2JB ' + esc(r.version || "") + "</span>";
+    if (r.kind === "unknown") return '<span class="up">Other download0.dat</span>';
+    return '<span class="none">No Y2JB yet</span>';
+  }
+
+  function actionLabel(r, latest) {
+    if (r.kind === "x") {
+      if (latest && r.version && r.version.replace(/^v/, "") === latest.replace(/^x-v/, "")) return "Reinstall";
+      return "Update";
+    }
+    if (r.kind === "upstream" || r.kind === "unknown") return "Replace with X";
+    return "Install X";
+  }
+
+  function start(r) {
+    if (busy()) return;
+    if ((r.kind === "upstream" || r.kind === "unknown") &&
+        !confirm(r.tid + " (" + r.region + ") has " + (r.kind === "upstream" ? "upstream Y2JB" : "another download0.dat") +
+                 ". Replace it with Y2JB Autoloader X?")) return;
+    if (!r.app && !confirm("YouTube " + r.tid + " doesn't look installed. Put Y2JB Autoloader X there anyway?")) return;
+    post("/update?tid=" + encodeURIComponent(r.tid), function (status, body) {
+      if (status !== 200) alert(body || ("Error " + status));
+      poll();
+    });
+  }
+
+  var lastRegionsKey = "";
+  function renderRegions() {
+    var box = $("regions"), latest = state.latest.state === "ok" ? state.latest.tag : "";
+    // Rebuild only when something changed, so controller focus and clicks aren't lost.
+    var key = JSON.stringify([state.regions, busy(), state.latest.state, latest]);
+    if (key === lastRegionsKey) return;
+    lastRegionsKey = key;
+    var active = document.activeElement && document.activeElement.getAttribute("data-tid");
+    if (active) focusedTid = active;
+    box.innerHTML = "";
+    state.regions.forEach(function (r) {
+      var row = document.createElement("div");
+      row.className = "region" + (r.scanned && !r.app && !r.image ? " off" : "");
+      row.innerHTML = '<div class="id"><div class="tid">' + esc(r.tid) + '</div><div class="name">' +
+        esc(REGION_NAMES[r.region] || r.region) + '</div></div><div class="state">' + describe(r) + "</div>";
+      var b = document.createElement("button");
+      b.textContent = actionLabel(r, latest);
+      b.setAttribute("data-tid", r.tid);
+      b.disabled = !r.scanned || busy() || state.latest.state === "loading";
+      b.onclick = function () { start(r); };
+      row.appendChild(b);
+      box.appendChild(row);
+    });
+    var target = focusedTid && box.querySelector('[data-tid="' + focusedTid + '"]');
+    if (target && !target.disabled) target.focus();
+  }
+
+  function render() {
+    var l = state.latest, j = state.job;
+    $("latest").innerHTML = l.state === "ok" ? "Latest release: <b>" + esc(l.tag) + "</b> &middot; " + mb(l.size)
+      : l.state === "error" ? '<span style="color:var(--err)">' + esc(l.error) + "</span>"
+      : "Checking the latest release&hellip;";
+    renderRegions();
+
+    var jobBox = $("job"), label = $("jobLabel");
+    jobBox.className = "job" + (j.state === "idle" ? "" : " show");
+    label.textContent = j.message;
+    label.className = "label" + (j.state === "error" ? " err" : j.state === "done" ? " ok" : "");
+    var pct = j.total ? Math.min(100, (j.bytes / j.total) * 100) : 0;
+    if (j.state === "verify" || j.state === "install" || j.state === "done") pct = 100;
+    if (j.state === "error") pct = 0;
+    $("bar").style.width = pct.toFixed(1) + "%";
+    $("bytes").textContent = j.state === "download" && j.total ? mb(j.bytes) + " / " + mb(j.total) + " (" + pct.toFixed(0) + "%)" : "";
+
+    $("rescan").disabled = busy();
+    $("close").disabled = busy();
+    $("log").textContent = state.log.join("\n");
+    $("footer").textContent = "Y2JB Autoloader X Updater v" + state.version + " · port 18383";
+  }
+
+  // One polling chain only: poll() cancels any pending timer before fetching.
+  var timer = null, inflight = false;
+  function poll() {
+    if (closed) return;
+    if (timer) { clearTimeout(timer); timer = null; }
+    if (inflight) return;
+    inflight = true;
+    var x = new XMLHttpRequest();
+    x.open("GET", "/status?t=" + Date.now(), true);
+    x.onload = function () {
+      inflight = false;
+      try { state = JSON.parse(x.responseText); render(); } catch (e) {}
+      timer = setTimeout(poll, busy() ? 700 : 1500);
+    };
+    x.onerror = function () {
+      inflight = false;
+      $("latest").textContent = "The updater has stopped. You can close this page.";
+      timer = setTimeout(poll, 3000);
+    };
+    x.send();
+  }
+
+  $("rescan").onclick = function () { post("/rescan", function () { poll(); }); };
+  $("close").onclick = function () {
+    post("/exit", function (status, body) {
+      if (status !== 200) { alert(body); return; }
+      closed = true;
+      document.body.innerHTML = '<main style="text-align:center;padding-top:120px"><h1>JAILBREAK</h1>' +
+        '<div class="sub">Updater closed. You can close this page.</div></main>';
+    });
+  };
+  poll();
+})();
+</script>
+</body>
+</html>

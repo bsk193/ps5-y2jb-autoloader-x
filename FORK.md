@@ -30,6 +30,7 @@ Manager). No exploit logic is changed.
 | `src/icon0.png` | Homescreen tile icon: broken chain + play badge, 512x512 (the updater writes it to the YouTube tile on each successful jailbreak; shows after a reboot) |
 | `Makefile` | Fork version hook (`X_VERSION`); `VERSION` stays upstream's |
 | `tools/fork_version.sh`, `tools/release.ps1` | Fork versioning (see below) |
+| `updater/` | Fork-only: `y2jb-x-updater.elf`, installs the latest `download0.dat` into a YouTube region picked in the browser (see below) |
 | `.github/workflows/` | `build.yml` (every push/PR) and tag-driven `release.yml` replace `dev.yml`/`stable.yml` |
 | `README.md`, `.gitignore` | Fork notes, update zip name |
 
@@ -61,6 +62,29 @@ Both are built in CI (`build.yml`); `download0.dat` needs FreeBSD's `newfs`:
    folder in, `chmod 444` on `splash.html` → `download0.dat`.
 4. The zip is renamed to `y2jb_x_update.zip` and both are uploaded as
    `y2jb-autoloader-x_v<ver>[-<sha>]_ps5`.
+
+## The updater (`updater/`)
+
+A native PS5 ELF, same pattern as the WebKit installer: it serves a page on `127.0.0.1:18383`,
+opens the PS5 browser on it, and waits for a choice.
+
+- **Shows** each YouTube region (`PPSA01650` US, `PPSA01651` EU, `PPSA01652` JP): whether the app is
+  installed (`/user/app/<tid>`) and what `/user/download/<tid>/download0.dat` holds. It scans the
+  image for `const upstream_version = "` (only Y2JB X's `main.js` has it) and the highest
+  `const autoloader_version = "vX"` (an in-place zip update can leave older copies in freed blocks).
+- **Downloads** `download0.dat` from this repo's latest release (GitHub API `releases/latest`, so
+  pre-releases are skipped) to `download0.dat.x-new` next to the old file, after a free-space check.
+- **Verifies** the size and the SHA-256 that GitHub lists for the asset, then `rename()`s it over
+  `download0.dat`, so a failed or partial download never replaces a working image. If that YouTube
+  app is running, the new image is used the next time it starts.
+- **Guards:** listens on loopback only; changing routes are `POST` + `X-Y2JB-Updater: 1`, which a page
+  from another origin can't send without a CORS preflight (never allowed). Exits from the page, or
+  after 15 idle minutes.
+
+Built with the same SDK image as Payload Manager X (`updater/Dockerfile.sdk`, `build_deps.sh`:
+libcurl + mbedTLS + libmicrohttpd). `tests/host_test.sh` builds the same code for Linux with the PS5
+calls stubbed and runs region detection, the guards and a real download + SHA-256 check; CI runs it
+in `build.yml` (job `updater`). Release asset: `y2jb-x-updater_v<ver>_ps5.elf`.
 
 ## Versioning
 

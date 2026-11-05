@@ -90,6 +90,12 @@ jobs:
         with:
           name: ${{ needs.build.outputs.artifact }}
           path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.updater_artifact }}
+          path: dist
+      - name: Name the updater ELF
+        run: mv dist/y2jb-x-updater.elf "dist/y2jb-x-updater_v${{ needs.version.outputs.version }}_ps5.elf"
       - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -104,7 +110,8 @@ jobs:
         run: |
           set -euo pipefail
           ls -l dist
-          for f in y2jb_x_update.zip download0.dat; do
+          UPDATER="y2jb-x-updater_v${VER}_ps5.elf"
+          for f in y2jb_x_update.zip download0.dat "$UPDATER"; do
             [ -f "dist/$f" ] || { echo "::error::missing artifact $f"; exit 1; }
           done
 
@@ -123,6 +130,7 @@ jobs:
             echo "|---|---|"
             echo "| \`download0.dat\` | First install: FTP to \`/user/download/PPSA0165*/\` (use a different YouTube region than upstream's Y2JB to keep both) |"
             echo "| \`y2jb_x_update.zip\` | Update: put on the root of a USB drive (or \`/data/\`) and start the app. Upstream's \`y2jb_update.zip\` is ignored, so both can sit on the same drive |"
+            echo "| \`$UPDATER\` | Updater: send to the PS5 (Payload Manager X or elfldr). It opens the browser, shows each YouTube region (\`PPSA01650\` US, \`PPSA01651\` EU, \`PPSA01652\` JP) and what it has now, then downloads the latest \`download0.dat\` into the one you pick. No FTP needed |"
             echo
             if [ -n "$PREV" ]; then
               echo "Changes: https://github.com/${REPO}/compare/$PREV...$TAG"
@@ -141,7 +149,7 @@ jobs:
           else
             FLAGS="--latest"
           fi
-          gh release create "$TAG" dist/y2jb_x_update.zip dist/download0.dat \
+          gh release create "$TAG" dist/y2jb_x_update.zip dist/download0.dat "dist/$UPDATER" \
             --target "$GITHUB_SHA" \
             --title "Y2JB Autoloader X $VER" \
             --notes-file notes.md \

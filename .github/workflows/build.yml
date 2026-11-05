@@ -1,6 +1,7 @@
 name: Build
 
-# y2jb_x_update.zip + download0.dat on every branch push and pull request.
+# y2jb_x_update.zip + download0.dat (and the y2jb-x-updater.elf payload) on
+# every branch push and pull request.
 # release.yml calls this workflow with the exact release version; tags are
 # handled there, not here.
 on:
@@ -25,6 +26,8 @@ on:
         value: ${{ jobs.build.outputs.kexp_ver }}
       autoloader_ver:
         value: ${{ jobs.build.outputs.autoloader_ver }}
+      updater_artifact:
+        value: ${{ jobs.updater.outputs.artifact }}
 
 concurrency:
   group: build-${{ github.ref }}-${{ inputs.version || 'dev' }}
@@ -130,4 +133,52 @@ jobs:
           path: |
             y2jb_x_update.zip
             download0.dat
+          retention-days: 30
+
+  # The updater payload: a native ELF that downloads the latest download0.dat
+  # and installs it into the YouTube region picked in the PS5 browser
+  # (see updater/). Built in the same SDK image as Payload Manager X.
+  updater:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact: ${{ steps.v.outputs.artifact }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: v
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            VER="$INPUT_VERSION"; SUFFIX=""
+          else
+            VER="$(bash tools/fork_version.sh dev)"; SUFFIX="-$(git rev-parse --short HEAD)"
+          fi
+          echo "artifact=y2jb-x-updater_v${VER}${SUFFIX}_ps5" >> "$GITHUB_OUTPUT"
+          echo "X_VERSION=$VER" >> "$GITHUB_ENV"
+
+      - name: Build PS5 SDK image
+        run: docker build -t ps5-payload-sdk -f updater/Dockerfile.sdk updater
+
+      - name: Build updater ELF
+        run: docker run --rm -v "$PWD":/src -w /src/updater ps5-payload-sdk make X_VERSION="$X_VERSION"
+
+      - name: Verify updater ELF
+        run: |
+          set -euo pipefail
+          strings updater/y2jb-x-updater.elf | grep -Fx "Y2JBX_UPDATER_VER:${X_VERSION}"
+          strings updater/y2jb-x-updater.elf | grep -F "api.github.com/repos/bsk193/ps5-y2jb-autoloader-x/releases/latest"
+
+      # Same C code built for Linux with the PS5 calls stubbed: checks region
+      # detection, the request guards, and a real download + SHA-256 check of
+      # the latest release's download0.dat.
+      - name: Host test
+        run: docker run --rm -v "$PWD":/src:ro -w /src/updater debian:bookworm-slim bash tests/host_test.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.v.outputs.artifact }}
+          path: updater/y2jb-x-updater.elf
           retention-days: 30
