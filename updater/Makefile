@@ -35,7 +35,8 @@ build/assets_index_html.h: frontend/index.html | build
 	$(PYTHON) tools/gen_assets.py $< $@ index_html
 build/assets_jb_png.h: ../src/jb.png | build
 	$(PYTHON) tools/gen_assets.py $< $@ jb_png
-build/assets_cacert_pem.h: $(TARGET)/etc/ca-bundle.crt | build
+# CA bundle from the image's signed Ubuntu ca-certificates package.
+build/assets_cacert_pem.h: /etc/ssl/certs/ca-certificates.crt | build
 	$(PYTHON) tools/gen_assets.py $< $@ cacert_pem
 
 # The version is baked in, so always relink.

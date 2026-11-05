@@ -55,6 +55,10 @@
 #define IMAGE_NAME       "download0.dat"
 #define MAX_IMAGE_SIZE   (768ull * 1024 * 1024)
 #define IDLE_EXIT_SEC    (15 * 60)
+#define STR2(x) #x
+#define STR(x) STR2(x)
+#define HOST_A "127.0.0.1:" STR(PORT)
+#define HOST_B "localhost:" STR(PORT)
 
 /* Host test builds (tests/host_test.sh) put /user under a temporary folder. */
 #ifndef ROOT_PREFIX
@@ -132,6 +136,10 @@ static char latest_error[200];
 static int latest_state; /* 0 = loading, 1 = ok, 2 = error */
 
 static atomic_int keep_running = 1;
+/* Per-launch secret: in the URL the browser is opened on (#t=...), and required
+ * on every state-changing request, so another page can't drive the updater even
+ * if it gets same-origin through DNS rebinding. */
+static char session_token[33];
 static atomic_long last_request;
 
 #define LOG_LINES 40
@@ -595,6 +603,11 @@ static enum MHD_Result on_request(void *cls, struct MHD_Connection *conn, const 
     (void)cls; (void)version; (void)upload;
     if (!*con_cls) { *con_cls = (void *)1; return MHD_YES; }
     if (*upload_size) { *upload_size = 0; return MHD_YES; }
+
+    /* Only our own loopback names: a DNS-rebound hostname is refused outright. */
+    const char *host = MHD_lookup_connection_value(conn, MHD_HEADER_KIND, "Host");
+    if (!host || (strcmp(host, HOST_A) && strcmp(host, HOST_B)))
+        return text(conn, 421, "wrong host");
     atomic_store(&last_request, (long)time(NULL));
 
     if (!strcmp(method, "GET")) {
@@ -610,10 +623,11 @@ static enum MHD_Result on_request(void *cls, struct MHD_Connection *conn, const 
         return text(conn, 404, "not found");
     }
 
-    /* State-changing routes are POST with a custom header: a page from another
-     * origin cannot send that without a CORS preflight, which is never allowed. */
+    /* State-changing routes: POST + the per-launch token in a custom header. A page
+     * from another origin can't send that header without a CORS preflight (never
+     * allowed), and doesn't know the token. */
     const char *hdr = MHD_lookup_connection_value(conn, MHD_HEADER_KIND, "X-Y2JB-Updater");
-    if (strcmp(method, "POST") || !hdr || strcmp(hdr, "1"))
+    if (strcmp(method, "POST") || !hdr || !session_token[0] || strcmp(hdr, session_token))
         return text(conn, 403, "forbidden");
 
     if (!strcmp(url, "/update")) {
@@ -677,6 +691,7 @@ static pid_t find_pid(const char *name) {
 
 int main(void) {
     (void)y2jbx_updater_sig[0];
+    setvbuf(stdout, NULL, _IOLBF, 0); /* one log line at a time, even into a file */
 #ifndef HOST_TEST
     pid_t pid;
     syscall(SYS_thr_set_name, -1, THREAD_NAME);
@@ -694,6 +709,11 @@ int main(void) {
     signal(SIGPIPE, SIG_IGN);
     signal(SIGHUP, SIG_IGN);
     curl_global_init(CURL_GLOBAL_DEFAULT);
+
+    /* Token first: no request may be served while it is still empty. */
+    unsigned char rnd[16];
+    arc4random_buf(rnd, sizeof(rnd));
+    for (int i = 0; i < 16; i++) snprintf(session_token + i * 2, 3, "%02x", rnd[i]);
 
     /* Loopback only: the page runs in the PS5's own browser. */
     struct sockaddr_in addr;
@@ -715,8 +735,8 @@ int main(void) {
     pthread_t t;
     if (!pthread_create(&t, NULL, scan_worker, NULL)) pthread_detach(t);
 
-    char url[96];
-    snprintf(url, sizeof(url), "http://127.0.0.1:%d/?v=%s", PORT, UPDATER_VERSION);
+    char url[128];
+    snprintf(url, sizeof(url), "http://" HOST_A "/?v=%s#t=%s", UPDATER_VERSION, session_token);
     if (sceSystemServiceLaunchWebBrowser(url) != 0)
         notify(UPDATER_NAME "\nCould not open the browser.\nOpen %s", url);
     else

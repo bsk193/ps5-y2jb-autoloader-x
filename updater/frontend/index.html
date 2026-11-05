@@ -113,10 +113,13 @@
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
   function mb(n) { return (n / 1048576).toFixed(1) + " MB"; }
 
+  // The updater opens this page as /#t=<per-launch token>; changes must carry it.
+  var TOKEN = (location.hash.match(/[#&]t=([0-9a-f]+)/) || [])[1] || "";
+
   function post(path, done) {
     var x = new XMLHttpRequest();
     x.open("POST", path, true);
-    x.setRequestHeader("X-Y2JB-Updater", "1");
+    x.setRequestHeader("X-Y2JB-Updater", TOKEN);
     x.onload = function () { done && done(x.status, x.responseText); };
     x.onerror = function () { done && done(0, "updater not reachable"); };
     x.send();
@@ -149,7 +152,8 @@
                  ". Replace it with Y2JB Autoloader X?")) return;
     if (!r.app && !confirm("YouTube " + r.tid + " doesn't look installed. Put Y2JB Autoloader X there anyway?")) return;
     post("/update?tid=" + encodeURIComponent(r.tid), function (status, body) {
-      if (status !== 200) alert(body || ("Error " + status));
+      if (status === 403) alert("This page was not opened by the updater. Run the updater ELF again.");
+      else if (status !== 200) alert(body || ("Error " + status));
       poll();
     });
   }
