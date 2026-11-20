@@ -23,7 +23,7 @@ LIBS    := $(TARGET)/lib/libcurl.a $(TARGET)/lib/libmbedtls.a $(TARGET)/lib/libm
            $(TARGET)/lib/libmbedcrypto.a $(TARGET)/lib/libmicrohttpd.a \
            -L$(TARGET)/lib -lpthread -lSceNetCtl -lSceUserService -lSceSystemService
 
-ASSETS := build/assets_index_html.h build/assets_jb_png.h build/assets_cacert_pem.h
+ASSETS := build/assets_index_html.h build/assets_cacert_pem.h
 SRCS   := src/main.c src/sha256.c
 
 all: $(ELF)
@@ -33,8 +33,6 @@ build:
 
 build/assets_index_html.h: frontend/index.html | build
 	$(PYTHON) tools/gen_assets.py $< $@ index_html
-build/assets_jb_png.h: ../src/jb.png | build
-	$(PYTHON) tools/gen_assets.py $< $@ jb_png
 # CA bundle from the image's signed Ubuntu ca-certificates package.
 build/assets_cacert_pem.h: /etc/ssl/certs/ca-certificates.crt | build
 	$(PYTHON) tools/gen_assets.py $< $@ cacert_pem

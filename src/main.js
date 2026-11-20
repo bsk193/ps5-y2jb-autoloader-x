@@ -124,7 +124,7 @@ function trigger() {
     };
 
     // Fork: Jailbreak shared UI. Same layout and values as the WebKit loader
-    // (frontend/autoloader/theme-x.css in ps5-webkit-autoloader-x): icon, wordmark,
+    // (frontend/autoloader/theme-x.css in ps5-webkit-autoloader-x): wordmark,
     // variant line, log panel, status line over a thin progress track, footer.
     // Drawn at 1920x1080 and scaled to the screen, like upstream's UI.
     const X = {
@@ -159,18 +159,9 @@ function trigger() {
             width: baseWidth + "px", height: baseHeight + "px",
             transform: "scale(" + scale + ")", transformOrigin: "top left",
             zIndex: "9999", backgroundColor: X.bg, color: X.text,
-            fontFamily: X.sans, boxSizing: "border-box", paddingTop: "56px"
+            fontFamily: X.sans, boxSizing: "border-box", paddingTop: "88px"
         });
         autoloader_ui.id = "autoloader_ui";
-
-        // Plain Jailbreak icon (jb.png sits next to splash.html); hidden if it can't load.
-        const logo = el("img", {
-            display: "block", width: "96px", height: "96px",
-            margin: "0 auto 18px auto", borderRadius: "10px"
-        });
-        logo.src = "jb.png";
-        logo.onerror = function() { if (logo.parentNode) logo.parentNode.removeChild(logo); };
-        autoloader_ui.appendChild(logo);
 
         autoloader_ui.appendChild(el("div", {
             textAlign: "center", fontSize: "44px", fontWeight: "600",

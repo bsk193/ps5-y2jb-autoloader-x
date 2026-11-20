@@ -13,7 +13,6 @@ apt-get install -y -qq gcc libc6-dev libcurl4-openssl-dev libmicrohttpd-dev pyth
 ROOT=$(mktemp -d)
 B=$(mktemp -d)
 python3 tools/gen_assets.py frontend/index.html "$B/assets_index_html.h" index_html >/dev/null
-python3 tools/gen_assets.py ../src/jb.png "$B/assets_jb_png.h" jb_png >/dev/null
 python3 tools/gen_assets.py /etc/ssl/certs/ca-certificates.crt "$B/assets_cacert_pem.h" cacert_pem >/dev/null
 gcc -O1 -Wall -Wextra -Wno-unused-parameter -DHOST_TEST -DROOT_PREFIX="\"$ROOT\"" -DUPDATER_VERSION='"test"' \
     -Iinclude -I"$B" -o "$B/updater" src/main.c src/sha256.c -lcurl -lmicrohttpd -lpthread

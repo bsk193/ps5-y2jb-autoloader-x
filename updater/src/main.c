@@ -41,7 +41,6 @@
 
 #include "sha256.h"
 #include "assets_index_html.h"
-#include "assets_jb_png.h"
 #include "assets_cacert_pem.h"
 
 #ifndef UPDATER_VERSION
@@ -613,8 +612,6 @@ static enum MHD_Result on_request(void *cls, struct MHD_Connection *conn, const 
     if (!strcmp(method, "GET")) {
         if (!strcmp(url, "/") || !strcmp(url, "/index.html"))
             return reply(conn, 200, "text/html; charset=utf-8", (void *)assets_index_html, assets_index_html_len, MHD_RESPMEM_PERSISTENT);
-        if (!strcmp(url, "/jb.png"))
-            return reply(conn, 200, "image/png", (void *)assets_jb_png, assets_jb_png_len, MHD_RESPMEM_PERSISTENT);
         if (!strcmp(url, "/status")) {
             char *s = build_status();
             if (!s) return text(conn, 500, "out of memory");
